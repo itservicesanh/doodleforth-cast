@@ -198,20 +198,21 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
   background: white;
 }
 #waiting h2 { margin: 0; font-size: 3.4vh; font-weight: 900; }
-#waiting:has(.mascot) { display: flex; flex-direction: column; justify-content: center; gap: 1.5vh; }
-.tv-mascot-waiting { height: 52%; aspect-ratio: 2 / 3; }
-.tv-mascot-waiting .mascot, .tv-mascot-corner .mascot { width: 100%; height: 100%; }
+#waiting { grid-auto-rows: max-content; align-content: center; row-gap: 1.5vh; }
+.tv-mascot-waiting { height: 30vh; text-align: center; }
+.tv-mascot-waiting[hidden], .tv-mascot-corner[hidden], .tv-mascot-win[hidden] { display: none; }
 /* Pencil mascot: sits beside the finished drawing, never on top of the middle. */
 .tv-mascot-corner {
-  position: absolute; right: 1.5%; bottom: 2%; z-index: 2; height: 38%; aspect-ratio: 4 / 5;
-  filter: drop-shadow(0 .4vh .8vh #2d105f40);
+  position: absolute; right: 1.5%; bottom: 2%; z-index: 2; height: 24vh;
+  filter: drop-shadow(0 .4vh .8vh rgba(45, 16, 95, .25));
 }
 .tv-mascot-win {
-  position: absolute; inset: 0; z-index: 2; color: white;
-  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--primary) 82%, white), var(--primary));
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 2; color: white;
+  background: #3d1a78;
+  background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, .16), rgba(255, 255, 255, 0) 60%), var(--primary, #2d105f);
 }
 .tv-mascot-win .mascot-win { padding-top: 14%; }
-.tv-mascot-win .mascot-win-pencil { max-height: 58vh; }
+.tv-mascot-win .mascot-win-pencil { height: 30vh; }
 .tv-mascot-win .win-avatar {
   display: grid; place-items: center; width: 15vmin; height: 15vmin; border-radius: 50%; overflow: hidden;
   background: #ffffff2e; border: .5vmin solid var(--accent); font-size: 5vmin; font-weight: 900;

@@ -32,7 +32,7 @@
       this.onclose = null;
       current = this;
       // Each new tv.js socket (first pair or a reconnect) asks for a fresh snapshot.
-      setTimeout(() => toHost({ v: 1, type: 'resync' }), 0);
+      setTimeout(() => toHost({ v: 1, type: 'resync', agent: String(navigator.userAgent).slice(0, 200) }), 0);
     }
     send() { /* The TV is read-only. */ }
     close() {
