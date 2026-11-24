@@ -18,21 +18,6 @@
   let current = null;         // The CastSocket tv.js currently uses.
   let context = null;
 
-  // TEMPORARY test diagnostics: a small status line in the corner of the TV.
-  const diag = { sdk: !!(window.cast && cast.framework), started: false, ready: false, senders: 0, messages: 0, last: '', error: '' };
-  function showDiag(update) {
-    Object.assign(diag, update || {});
-    let el = document.getElementById('castDiag');
-    if (!el && document.body) {
-      el = document.createElement('div');
-      el.id = 'castDiag';
-      el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99999;font:14px monospace;color:#fff;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:6px;pointer-events:none';
-      document.body.appendChild(el);
-    }
-    if (el) el.textContent = `cast sdk=${diag.sdk} started=${diag.started} ready=${diag.ready} senders=${diag.senders} msgs=${diag.messages} last=${diag.last}${diag.error ? ' err=' + diag.error : ''}`;
-  }
-  window.addEventListener('error', event => showDiag({ error: String(event.message).slice(0, 80) }));
-  window.addEventListener('DOMContentLoaded', () => showDiag());
 
   function toHost(message) {
     if (!context || !hostSender) return;
@@ -82,7 +67,20 @@
       }
       return;
     }
-    if (current && current.onmessage) current.onmessage({ data: JSON.stringify(message) });
+    if (!current) { repair(); return; }
+    if (current.onmessage) current.onmessage({ data: JSON.stringify(message) });
+  }
+
+  // tv.js stops retrying when its first connection closes before a snapshot
+  // (e.g. its watchdog fires while the host is still connecting). On Cast the
+  // host may arrive later, so re-run tv.js's own auto-pair; the new socket asks
+  // the host for a fresh snapshot.
+  function repair() {
+    const form = document.getElementById('pairForm');
+    const input = document.getElementById('pairCode');
+    if (!form || !input || document.getElementById('pairing').hidden) return;
+    input.value = '00000000';
+    if (form.requestSubmit) form.requestSubmit(); else form.dispatchEvent(new Event('submit', { cancelable: true }));
   }
 
   // Images such as avatars and the join QR live on the host's local server.
@@ -121,9 +119,17 @@
   // pairing code locally, so the receiver never learns it.
   history.replaceState(null, '', location.pathname + location.search + '#pair=00000000&embedded=1');
 
+  const WAITING = 'Waiting for the DoodleForth host…';
+  const style = document.createElement('style');
+  style.textContent = '#pairForm > p:not(#pairStatus), #pairForm > label, #pairCode, #pairForm > button { display: none !important; }';
+  document.head.appendChild(style);
   window.addEventListener('DOMContentLoaded', () => {
     const status = document.getElementById('pairStatus');
-    if (status) status.textContent = 'Waiting for the DoodleForth host…';
+    if (!status) return;
+    // tv.js's manual-pairing messages (pairing code, Wi-Fi, slots) don't apply here.
+    const keepWaiting = () => { if (status.textContent !== WAITING) status.textContent = WAITING; };
+    keepWaiting();
+    new MutationObserver(keepWaiting).observe(status, { childList: true, characterData: true, subtree: true });
   });
 
   const preview = new URLSearchParams(location.search).get('preview') === '1';
@@ -135,15 +141,11 @@
   }
   context = cast.framework.CastReceiverContext.getInstance();
   context.addCustomMessageListener(NAMESPACE, event => {
-    showDiag({ messages: diag.messages + 1, last: (String(event.data).match(/"type":"([a-z_]+)"/) || [, 'chunk'])[1] });
     if (!hostSender) hostSender = event.senderId;
     if (event.senderId !== hostSender) return; // Ignore other senders: they cannot take over the TV.
     deliver(typeof event.data === 'string' ? event.data : JSON.stringify(event.data));
   });
-  context.addEventListener(cast.framework.system.EventType.READY, () => showDiag({ ready: true }));
-  context.addEventListener(cast.framework.system.EventType.SENDER_CONNECTED, () => showDiag({ senders: context.getSenders().length }));
   context.addEventListener(cast.framework.system.EventType.SENDER_DISCONNECTED, event => {
-    showDiag({ senders: context.getSenders().length });
     if (event.senderId !== hostSender) return;
     hostSender = null;
     // Keep the last picture; tv.js shows "Reconnecting…" via its own watchdog.
@@ -154,6 +156,5 @@
   options.customNamespaces = { [NAMESPACE]: cast.framework.system.MessageType.JSON };
   options.disableIdleTimeout = true;
   options.skipPlayersLoad = true;
-  try { context.start(options); showDiag({ started: true }); }
-  catch (error) { showDiag({ error: 'start: ' + String(error && error.message || error).slice(0, 80) }); }
+  context.start(options);
 })();
