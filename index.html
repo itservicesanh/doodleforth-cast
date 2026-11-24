@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DoodleForth · TV Party Screen</title>
+  <link rel="stylesheet" href="tv.css">
+  <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+  <script src="cast-bridge.js"></script>
+  <script defer src="drawing-renderer.js"></script>
+  <script defer src="tv.js"></script>
+</head>
+<body>
+  <main id="pairing">
+    <form id="pairForm">
+      <img src="brand-mark.png" alt="" width="72" height="72">
+      <h1>DoodleForth</h1>
+      <p>Open Connect TV on the host device and enter the pairing code.</p>
+      <label for="pairCode">TV pairing code</label>
+      <input id="pairCode" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
+      <button type="submit">Connect TV</button>
+      <p id="pairStatus" role="status"></p>
+    </form>
+  </main>
+  <main id="party" hidden>
+    <header class="topbar">
+      <div class="brand"><img src="brand-mark.png" alt=""><strong>DoodleForth</strong></div>
+      <h1 id="roundLabel"></h1>
+      <div class="clock"><span id="bonus" hidden></span><span id="timer">—:—</span></div>
+    </header>
+    <div class="party-grid">
+      <section class="side-panel scoreboard" aria-labelledby="scoresLabel">
+        <h2 id="scoresLabel">Scores</h2>
+        <p id="emptyScores" class="empty-note">Waiting for players</p>
+        <ul id="players" aria-label="Player scores"></ul>
+        <div id="rankings" aria-label="Team scores" hidden></div>
+        <section id="upNext" class="up-next" aria-labelledby="upNextLabel" hidden>
+          <h2 id="upNextLabel">Up next</h2>
+          <p id="nextArtist"></p>
+        </section>
+      </section>
+      <section id="stage" aria-label="Drawing stage">
+        <div id="drawingFrame">
+          <canvas id="drawing" aria-label="Live drawing"></canvas>
+          <div id="waiting" role="status"><h2 id="waitingTitle">Waiting for the first round</h2></div>
+          <div id="roundBanner" class="round-banner" role="status" hidden>
+            <strong id="resultTitle"></strong>
+            <span id="resultDetail" hidden></span>
+          </div>
+        </div>
+        <p id="artistLabel" class="artist-label"></p>
+      </section>
+      <section class="side-panel guess-panel" aria-labelledby="guessesLabel">
+        <h2 id="guessesLabel">Live guesses</h2>
+        <div class="guess-feed">
+          <ul id="correctGuesses" aria-label="Correct guesses" aria-live="polite"></ul>
+          <ul id="guesses" aria-label="Recent guesses"></ul>
+          <p id="emptyGuesses" class="empty-note">Guesses will appear here</p>
+        </div>
+        <div class="join-area">
+          <figure id="lastDrawing" aria-label="Last drawing" hidden>
+            <img id="lastDrawingThumbnail" alt="Last completed drawing" hidden>
+            <figcaption class="last-drawing-credits">
+              <span><strong>By:</strong> <span id="lastDrawingArtist"></span></span>
+              <span><strong>Guessed:</strong> <span id="lastDrawingGuessers"></span></span>
+            </figcaption>
+          </figure>
+          <figure id="join">
+            <img id="joinQR" alt="Scan to join DoodleForth as a player">
+            <figcaption>Scan to join</figcaption>
+          </figure>
+          <p id="roomLabel"></p>
+          <div class="tools" aria-label="TV controls">
+            <button id="sound" type="button" aria-pressed="false">Sound off</button>
+            <button id="fullscreen" type="button" hidden>Full screen</button>
+            <button id="disconnect" type="button">Disconnect</button>
+          </div>
+        </div>
+      </section>
+    </div>
+    <p id="connection" role="status" hidden></p>
+  </main>
+</body>
+</html>
