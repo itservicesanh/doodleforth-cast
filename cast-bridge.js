@@ -18,6 +18,22 @@
   let current = null;         // The CastSocket tv.js currently uses.
   let context = null;
 
+  // TEMPORARY test diagnostics: a small status line in the corner of the TV.
+  const diag = { sdk: !!(window.cast && cast.framework), started: false, ready: false, senders: 0, messages: 0, last: '', error: '' };
+  function showDiag(update) {
+    Object.assign(diag, update || {});
+    let el = document.getElementById('castDiag');
+    if (!el && document.body) {
+      el = document.createElement('div');
+      el.id = 'castDiag';
+      el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99999;font:14px monospace;color:#fff;background:rgba(0,0,0,.6);padding:4px 8px;border-radius:6px;pointer-events:none';
+      document.body.appendChild(el);
+    }
+    if (el) el.textContent = `cast sdk=${diag.sdk} started=${diag.started} ready=${diag.ready} senders=${diag.senders} msgs=${diag.messages} last=${diag.last}${diag.error ? ' err=' + diag.error : ''}`;
+  }
+  window.addEventListener('error', event => showDiag({ error: String(event.message).slice(0, 80) }));
+  window.addEventListener('DOMContentLoaded', () => showDiag());
+
   function toHost(message) {
     if (!context || !hostSender) return;
     try { context.sendCustomMessage(NAMESPACE, hostSender, message); } catch (_) {}
@@ -119,11 +135,15 @@
   }
   context = cast.framework.CastReceiverContext.getInstance();
   context.addCustomMessageListener(NAMESPACE, event => {
+    showDiag({ messages: diag.messages + 1, last: (String(event.data).match(/"type":"([a-z_]+)"/) || [, 'chunk'])[1] });
     if (!hostSender) hostSender = event.senderId;
     if (event.senderId !== hostSender) return; // Ignore other senders: they cannot take over the TV.
     deliver(typeof event.data === 'string' ? event.data : JSON.stringify(event.data));
   });
+  context.addEventListener(cast.framework.system.EventType.READY, () => showDiag({ ready: true }));
+  context.addEventListener(cast.framework.system.EventType.SENDER_CONNECTED, () => showDiag({ senders: context.getSenders().length }));
   context.addEventListener(cast.framework.system.EventType.SENDER_DISCONNECTED, event => {
+    showDiag({ senders: context.getSenders().length });
     if (event.senderId !== hostSender) return;
     hostSender = null;
     // Keep the last picture; tv.js shows "Reconnecting…" via its own watchdog.
@@ -132,5 +152,6 @@
   options.customNamespaces = { [NAMESPACE]: cast.framework.system.MessageType.STRING };
   options.disableIdleTimeout = true;
   options.skipPlayersLoad = true;
-  context.start(options);
+  try { context.start(options); showDiag({ started: true }); }
+  catch (error) { showDiag({ error: 'start: ' + String(error && error.message || error).slice(0, 80) }); }
 })();
