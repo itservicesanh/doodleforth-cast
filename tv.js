@@ -394,7 +394,11 @@
         break;
       case 'stroke_update': {
         const stroke = strokes.find(item => item.id === message.strokeId);
-        if (stroke) stroke.points.push(message.point);
+        // Hosts from 0.9 send a batch in `points`; older hosts send one `point`.
+        const added = Array.isArray(message.points)
+          ? message.points.filter(p => Array.isArray(p) && p.length === 2).map(p => ({ x: p[0], y: p[1] }))
+          : message.point ? [message.point] : [];
+        if (stroke) for (const point of added) { if (stroke.points.length < 2000) stroke.points.push(point); }
         break;
       }
       case 'stroke_replace': {
