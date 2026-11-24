@@ -149,7 +149,9 @@
     // Keep the last picture; tv.js shows "Reconnecting…" via its own watchdog.
   });
   const options = new cast.framework.CastReceiverOptions();
-  options.customNamespaces = { [NAMESPACE]: cast.framework.system.MessageType.STRING };
+  // JSON matches the type addCustomMessageListener registers; STRING made start() throw
+  // "Invalid messageType for the namespace" on a real Chromecast.
+  options.customNamespaces = { [NAMESPACE]: cast.framework.system.MessageType.JSON };
   options.disableIdleTimeout = true;
   options.skipPlayersLoad = true;
   try { context.start(options); showDiag({ started: true }); }
