@@ -461,6 +461,49 @@
   window.addEventListener('pagehide', () => { if (socket) socket.close(); });
   setInterval(() => { if (socket && Date.now() - lastMessage > 18000) socket.close(); }, 3000);
 
+  // Keep the TV awake while the Party Screen is open. TV browsers and Cast
+  // devices may sleep or start a screensaver when no video plays. Use the Screen
+  // Wake Lock API where it exists (HTTPS only), and otherwise play a silent,
+  // almost invisible 1 fps video, which TV browsers treat as video playing.
+  let wakeLock = null;
+  let keepAwakeVideo = null;
+  function keepAwake() {
+    if (document.visibilityState !== 'visible') return;
+    if (!wakeLock && navigator.wakeLock?.request) {
+      navigator.wakeLock.request('screen').then(lock => {
+        wakeLock = lock;
+        lock.addEventListener('release', () => { wakeLock = null; });
+      }).catch(() => {});
+    }
+    try {
+      if (!keepAwakeVideo) {
+        const source = document.createElement('canvas');
+        source.width = source.height = 16;
+        if (!source.captureStream) return;
+        const ink = source.getContext('2d');
+        let frame = 0;
+        const draw = () => { ink.fillStyle = frame++ % 2 ? '#2d105f' : '#2e1060'; ink.fillRect(0, 0, 16, 16); };
+        draw();
+        setInterval(draw, 1000);
+        keepAwakeVideo = document.createElement('video');
+        keepAwakeVideo.muted = true;
+        keepAwakeVideo.loop = true;
+        keepAwakeVideo.playsInline = true;
+        keepAwakeVideo.setAttribute('playsinline', '');
+        keepAwakeVideo.setAttribute('aria-hidden', 'true');
+        keepAwakeVideo.srcObject = source.captureStream(1);
+        Object.assign(keepAwakeVideo.style, { position: 'fixed', inset: '0', width: '100%', height: '100%',
+          objectFit: 'cover', opacity: '0.01', zIndex: '-1', pointerEvents: 'none' });
+        document.body.prepend(keepAwakeVideo);
+      }
+      if (keepAwakeVideo.paused) keepAwakeVideo.play().catch(() => {});
+    } catch (_) { /* Not available on this TV browser. */ }
+  }
+  document.addEventListener('visibilitychange', keepAwake);
+  for (const type of ['click', 'keydown', 'touchstart']) document.addEventListener(type, keepAwake, { passive: true });
+  setInterval(keepAwake, 30000);
+  keepAwake();
+
   // Host-launched presentations (AirPlay external display, Google Cast receiver)
   // pass the pairing code in the URL fragment, which is never sent to a server.
   const launch = new URLSearchParams(location.hash.slice(1));
