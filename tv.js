@@ -148,6 +148,7 @@
     get('waiting').hidden = phase !== 'lobby' && phase !== 'wordSelection';
     get('waitingTitle').textContent = phase === 'wordSelection' ? 'Waiting for the artist to choose a word' : 'Waiting for the first round';
     showResult();
+    showMascot();
     showPlayers(previous && previous.game.number === game.number);
     showStandings();
     showCorrectGuesses();
@@ -208,6 +209,51 @@
     detailNode.hidden = !detail;
     banner.hidden = !title;
     banner.classList.toggle('is-final', final);
+  }
+
+  // Pencil mascot: thinking while waiting, confused when nobody guessed,
+  // and a celebration with the winners' own avatars when the game is won.
+  function showMascot() {
+    const mascot = window.DoodleMascot;
+    if (!mascot) return;
+    const game = state.game;
+    const phase = state.phase;
+    const turn = game.number + ':' + state.round;
+    if (phase === 'lobby' || phase === 'wordSelection') mascot.place(get('waitingMascot'), 'thinking:' + game.number, 'thinking');
+    else mascot.clear(get('waitingMascot'));
+    const final = phase === 'finished' && game.isComplete;
+    if (phase === 'finished' && !final && state.solvers.length === 0) mascot.place(get('mascotCorner'), 'confused:' + turn, 'confused');
+    else mascot.clear(get('mascotCorner'));
+    if (!final) { mascot.clear(get('mascotWin')); return; }
+    let winners = [];
+    let title = 'Thanks for playing!';
+    const everyone = state.players.slice();
+    if (!everyone.some(player => player.id === 'ipad-host') && game.winnerIDs.includes('ipad-host')) {
+      const host = game.standings.find(entry => entry.id === 'ipad-host');
+      everyone.push({ id: 'ipad-host', name: host ? host.name : 'Host', avatar: state.hostAvatar });
+    }
+    if (game.teams.length) {
+      const teams = game.teams.filter(entry => game.winnerIDs.includes(entry.team));
+      winners = everyone.filter(player => teams.some(entry => entry.team === player.team));
+      if (teams.length) title = teams.map(entry => prettyTeam(entry.team)).join(' & ') + (teams.length === 1 ? ' team wins!' : ' teams share the win!');
+    } else {
+      winners = everyone.filter(player => game.winnerIDs.includes(player.id));
+      if (winners.length) title = winners.map(player => player.name).join(' & ') + (winners.length === 1 ? ' wins!' : ' share the win!');
+    }
+    mascot.celebrate(get('mascotWin'), 'win:' + game.number, title, winners.map(player => ({ name: player.name, avatar: winAvatar(player) })));
+  }
+
+  function winAvatar(player) {
+    const badge = create('span', 'win-avatar');
+    badge.textContent = player.name.trim().slice(0, 2).toUpperCase();
+    if (player.avatar && (catalogAvatar.test(player.avatar) || /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(player.avatar))) {
+      const image = document.createElement('img');
+      image.alt = '';
+      image.onload = () => { badge.textContent = ''; badge.appendChild(image); };
+      image.src = catalogAvatar.test(player.avatar)
+        ? '/avatars/' + player.avatar + '.png?tv=' + encodeURIComponent(code) : player.avatar;
+    }
+    return badge;
   }
 
   function showClock() {

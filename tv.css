@@ -198,6 +198,26 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
   background: white;
 }
 #waiting h2 { margin: 0; font-size: 3.4vh; font-weight: 900; }
+#waiting:has(.mascot) { display: flex; flex-direction: column; justify-content: center; gap: 1.5vh; }
+.tv-mascot-waiting { height: 52%; aspect-ratio: 2 / 3; }
+.tv-mascot-waiting .mascot, .tv-mascot-corner .mascot { width: 100%; height: 100%; }
+/* Pencil mascot: sits beside the finished drawing, never on top of the middle. */
+.tv-mascot-corner {
+  position: absolute; right: 1.5%; bottom: 2%; z-index: 2; height: 38%; aspect-ratio: 4 / 5;
+  filter: drop-shadow(0 .4vh .8vh #2d105f40);
+}
+.tv-mascot-win {
+  position: absolute; inset: 0; z-index: 2; color: white;
+  background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--primary) 82%, white), var(--primary));
+}
+.tv-mascot-win .mascot-win { padding-top: 14%; }
+.tv-mascot-win .mascot-win-pencil { max-height: 58vh; }
+.tv-mascot-win .win-avatar {
+  display: grid; place-items: center; width: 15vmin; height: 15vmin; border-radius: 50%; overflow: hidden;
+  background: #ffffff2e; border: .5vmin solid var(--accent); font-size: 5vmin; font-weight: 900;
+}
+.tv-mascot-win .win-avatar img { width: 100%; height: 100%; object-fit: contain; }
+.round-banner { z-index: 3; }
 .artist-label {
   min-height: 1.2em;
   margin: 0;
@@ -331,6 +351,9 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 @keyframes toast-in { from { opacity: 0; transform: translateY(.3em); } }
 @keyframes celebrate { 35% { box-shadow: inset 0 0 2vh #ffffff60; } }
 .quiet-celebrations .gained, .quiet-celebrations .round-banner, .quiet-celebrations .solve { animation: none !important; }
+.quiet-celebrations .mascot, .quiet-celebrations .mascot img, .quiet-celebrations .mascot-win-pencil,
+.quiet-celebrations .mascot-win-crowd { animation: none !important; }
+.quiet-celebrations .mascot-confetti { display: none; }
 
 @media (max-aspect-ratio: 4/3) {
   #party { height: auto; min-height: 100vh; }

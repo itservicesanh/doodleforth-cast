@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DoodleForth · TV Party Screen</title>
   <link rel="stylesheet" href="tv.css">
+  <link rel="stylesheet" href="mascot.css">
   <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
   <script src="cast-bridge.js"></script>
   <script defer src="drawing-renderer.js"></script>
+  <script defer src="mascot.js"></script>
   <script defer src="tv.js"></script>
 </head>
 <body>
@@ -42,7 +44,9 @@
       <section id="stage" aria-label="Drawing stage">
         <div id="drawingFrame">
           <canvas id="drawing" aria-label="Live drawing"></canvas>
-          <div id="waiting" role="status"><h2 id="waitingTitle">Waiting for the first round</h2></div>
+          <div id="waiting" role="status"><div id="waitingMascot" class="tv-mascot-waiting" hidden></div><h2 id="waitingTitle">Waiting for the first round</h2></div>
+          <div id="mascotCorner" class="tv-mascot-corner" hidden></div>
+          <div id="mascotWin" class="tv-mascot-win" hidden></div>
           <div id="roundBanner" class="round-banner" role="status" hidden>
             <strong id="resultTitle"></strong>
             <span id="resultDetail" hidden></span>
