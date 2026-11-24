@@ -28,7 +28,10 @@
     <header class="topbar">
       <div class="brand"><img src="brand-mark.png" alt=""><strong>DoodleForth</strong></div>
       <h1 id="roundLabel"></h1>
-      <div class="clock"><span id="bonus" hidden></span><span id="timer">—:—</span></div>
+      <div class="clock">
+        <span id="bonus" hidden></span><span id="timer">—:—</span>
+        <figure id="join"><img id="joinQR" alt="Scan to join DoodleForth as a player"></figure>
+      </div>
     </header>
     <div class="party-grid">
       <section class="side-panel scoreboard" aria-labelledby="scoresLabel">
@@ -62,18 +65,8 @@
           <p id="emptyGuesses" class="empty-note">Guesses will appear here</p>
         </div>
         <div class="join-area">
-          <figure id="lastDrawing" aria-label="Last drawing" hidden>
-            <img id="lastDrawingThumbnail" alt="Last completed drawing" hidden>
-            <figcaption class="last-drawing-credits">
-              <span><strong>By:</strong> <span id="lastDrawingArtist"></span></span>
-              <span><strong>Guessed:</strong> <span id="lastDrawingGuessers"></span></span>
-            </figcaption>
-          </figure>
-          <figure id="join">
-            <img id="joinQR" alt="Scan to join DoodleForth as a player">
-            <figcaption>Scan to join</figcaption>
-          </figure>
-          <p id="roomLabel"></p>
+          <div id="recentDrawings" class="recent-drawings" aria-label="Recent drawings" hidden></div>
+          <p id="roomLabel" hidden></p>
           <div class="tools" aria-label="TV controls">
             <button id="sound" type="button" aria-pressed="false">Sound off</button>
             <button id="fullscreen" type="button" hidden>Full screen</button>

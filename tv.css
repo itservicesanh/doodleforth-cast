@@ -73,7 +73,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 .brand img { width: 1.43em; height: 1.43em; border-radius: .28em; }
 .brand strong { letter-spacing: -.045em; font-weight: 950; }
 #roundLabel { margin: 0; white-space: nowrap; font-size: 3.8vh; font-weight: 850; letter-spacing: -.025em; }
-.clock { display: flex; align-items: center; justify-self: end; gap: .6em; white-space: nowrap; }
+.clock { display: flex; align-items: center; justify-self: end; gap: .6em; white-space: nowrap; height: 100%; }
 #timer {
   min-width: 3.2em;
   text-align: center;
@@ -187,6 +187,8 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
   background: #fff;
 }
 #drawing { display: block; width: 100%; height: 100%; }
+/* tv.js sizes the white frame to exactly 16:9 inside the stage. */
+#drawingFrame { justify-self: center; align-self: center; width: 100%; height: 100%; }
 #waiting {
   position: absolute;
   inset: 0;
@@ -278,10 +280,9 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
   -webkit-line-clamp: 3;
 }
 .join-area { flex: none; text-align: center; }
-#lastDrawing {
-  margin: 0 0 .95vh;
-}
-#lastDrawing img {
+.recent-drawings { display: flex; flex-direction: column; gap: .95vh; }
+.recent-drawing { margin: 0; }
+.recent-drawing img {
   display: block;
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -307,8 +308,10 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Join QR sits beside the timer at the top right (QR only). */
 #join {
   position: relative;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -329,8 +332,9 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
   background: #fff;
   image-rendering: pixelated;
 }
-#join.is-large { flex-direction: column; }
-#join.is-large img { width: 31vh; height: auto; max-width: 100%; aspect-ratio: 1; }
+#join img { width: auto !important; height: 100% !important; max-height: 8.2vh; }
+#join.is-large { position: fixed; top: 2vh; right: 2vw; z-index: 20; height: auto; padding: 1.2vh; box-shadow: 0 1vh 4vh rgba(0, 0, 0, .45); }
+#join.is-large img { width: 38vh !important; height: 38vh !important; max-height: none; }
 #roomLabel { margin: .32em 0 .38em; color: white; font-size: 2.65vh; font-weight: 850; font-variant-numeric: tabular-nums; }
 .tools { display: flex; justify-content: center; flex-wrap: wrap; gap: .35em; font-size: 1.45vh; }
 .tools button { padding: .33em .5em; }

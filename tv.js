@@ -58,7 +58,10 @@
         const qrURL = '/join-qr.png?tv=' + encodeURIComponent(code);
         if (get('joinQR').getAttribute('src') !== qrURL) get('joinQR').src = qrURL;
         showState(message);
-        showLastDrawing(message.lastDrawing);
+        // Hosts from 0.9 send the two latest drawings; older hosts send one.
+        showRecentDrawings(Array.isArray(message.recentDrawings) ? message.recentDrawings
+          : message.lastDrawing ? [message.lastDrawing] : []);
+        fitFrame();
       } else if (message.type === 'tv_configuration') {
         get('join').classList.toggle('is-large', message.largeQR === true);
         get('party').classList.toggle('quiet-celebrations', message.celebrations === false);
@@ -109,7 +112,7 @@
     clearTimeout(guessTimer);
     for (const id of ['players', 'guesses', 'correctGuesses', 'rankings']) get(id).textContent = '';
     get('joinQR').removeAttribute('src');
-    showLastDrawing(null);
+    showRecentDrawings([]);
     get('connection').hidden = true;
     get('party').hidden = true;
     get('pairing').hidden = false;
@@ -161,29 +164,54 @@
     paint();
   }
 
-  function showLastDrawing(drawing) {
-    const card = get('lastDrawing');
-    const thumbnail = get('lastDrawingThumbnail');
-    card.hidden = !drawing;
-    if (!drawing) {
-      thumbnail.removeAttribute('src');
-      thumbnail.hidden = true;
-      return;
-    }
-    if (drawing.hasThumbnail) {
-      const url = '/tv-thumbnail.png?tv=' + encodeURIComponent(code) + '&id=' + encodeURIComponent(drawing.id);
-      if (thumbnail.getAttribute('src') !== url) {
-        thumbnail.hidden = false;
-        thumbnail.src = url;
+  let recentKey = '';
+  function showRecentDrawings(drawings) {
+    const list = get('recentDrawings');
+    const recent = drawings.slice(0, 2);
+    const key = JSON.stringify(recent);
+    if (key === recentKey) return;
+    recentKey = key;
+    list.replaceChildren();
+    list.hidden = !recent.length;
+    for (const drawing of recent) {
+      const card = create('figure', 'recent-drawing');
+      if (drawing.hasThumbnail) {
+        const image = document.createElement('img');
+        image.alt = 'Recent drawing by ' + drawing.artist;
+        image.onerror = () => { image.hidden = true; };
+        image.src = '/tv-thumbnail.png?tv=' + encodeURIComponent(code) + '&id=' + encodeURIComponent(drawing.id);
+        card.append(image);
       }
-    } else {
-      thumbnail.removeAttribute('src');
-      thumbnail.hidden = true;
+      const credits = create('figcaption', 'last-drawing-credits');
+      for (const [label, value] of [['By:', drawing.artist], ['Guessed:', (drawing.guessers || []).join(', ') || 'None']]) {
+        const row = document.createElement('span');
+        const title = document.createElement('strong');
+        title.textContent = label;
+        const text = document.createElement('span');
+        text.textContent = text.title = value;
+        row.append(title, ' ', text);
+        credits.append(row);
+      }
+      card.append(credits);
+      list.append(card);
     }
-    const artist = get('lastDrawingArtist');
-    const guessers = get('lastDrawingGuessers');
-    artist.textContent = artist.title = drawing.artist;
-    guessers.textContent = guessers.title = drawing.guessers.join(', ') || 'None';
+  }
+
+  // Size the white drawing frame to exactly 16:9 within the stage, so there is
+  // no empty white band above or below the drawing.
+  function fitFrame() {
+    const stage = get('stage');
+    const frame = get('drawingFrame');
+    const label = get('artistLabel');
+    if (!stage || !frame || get('party').hidden) return;
+    const gap = parseFloat(getComputedStyle(stage).rowGap) || 0;
+    const width = stage.clientWidth;
+    const height = stage.clientHeight - label.offsetHeight - gap;
+    if (width <= 0 || height <= 0) return;
+    const frameWidth = Math.min(width, height * 16 / 9);
+    frame.style.width = Math.floor(frameWidth) + 'px';
+    frame.style.height = Math.floor(frameWidth * 9 / 16) + 'px';
+    paint();
   }
 
   function showResult() {
@@ -505,8 +533,7 @@
     get('sound').textContent = soundEnabled ? 'Sound on' : 'Sound off';
     get('sound').setAttribute('aria-pressed', String(soundEnabled));
   });
-  get('lastDrawingThumbnail').addEventListener('error', event => { event.currentTarget.hidden = true; });
-  window.addEventListener('resize', paint);
+  window.addEventListener('resize', fitFrame);
   window.addEventListener('online', () => { if (code && !socket && hasConnected) connect(); });
   window.addEventListener('pagehide', () => { if (socket) socket.close(); });
   setInterval(() => { if (socket && Date.now() - lastMessage > 18000) socket.close(); }, 3000);

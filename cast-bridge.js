@@ -63,6 +63,7 @@
       if (typeof message.path === 'string' && /^data:image\/png;base64,/.test(message.data)) {
         assets.set(message.path, message.data);
         pendingAssets.delete(message.path);
+        deliverWaiting(message.path);
         applyAssets(document);
       }
       return;
@@ -94,6 +95,44 @@
       pendingAssets.add(src);
       toHost({ v: 1, type: 'asset_request', path: src });
     }
+  }
+
+  // tv.js creates avatar and thumbnail images before adding them to the page
+  // (it shows initials until the picture loads), so the page observer never
+  // sees them. Catch every host-image src as it is set and load it through
+  // the host instead.
+  const waiting = new Map(); // path -> Set of images
+  const srcProperty = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+  if (srcProperty && srcProperty.set) {
+    Object.defineProperty(HTMLImageElement.prototype, 'src', {
+      configurable: true,
+      enumerable: srcProperty.enumerable,
+      get() { return srcProperty.get.call(this); },
+      set(value) {
+        const path = String(value);
+        if (!ASSET_PATH.test(path)) { srcProperty.set.call(this, value); return; }
+        const cached = assets.get(path);
+        if (cached) { srcProperty.set.call(this, cached); return; }
+        if (!waiting.has(path)) waiting.set(path, new Set());
+        waiting.get(path).add(this);
+        if (!pendingAssets.has(path)) {
+          pendingAssets.add(path);
+          toHost({ v: 1, type: 'asset_request', path });
+        }
+      }
+    });
+  }
+
+  // Pictures asked for before the host connected are asked for again.
+  function requestWaiting() {
+    for (const path of waiting.keys()) toHost({ v: 1, type: 'asset_request', path });
+  }
+
+  function deliverWaiting(path) {
+    const images = waiting.get(path);
+    if (!images) return;
+    waiting.delete(path);
+    for (const image of images) srcProperty.set.call(image, assets.get(path));
   }
 
   function applyAssets(root) {
@@ -141,7 +180,7 @@
   }
   context = cast.framework.CastReceiverContext.getInstance();
   context.addCustomMessageListener(NAMESPACE, event => {
-    if (!hostSender) hostSender = event.senderId;
+    if (!hostSender) { hostSender = event.senderId; setTimeout(requestWaiting, 0); }
     if (event.senderId !== hostSender) return; // Ignore other senders: they cannot take over the TV.
     deliver(typeof event.data === 'string' ? event.data : JSON.stringify(event.data));
   });
