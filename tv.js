@@ -69,6 +69,7 @@
         state.remainingSeconds = message.remainingSeconds;
         state.bonusRemainingSeconds = message.bonusRemainingSeconds;
         showClock();
+        showMascot();
       } else {
         applyInk(message);
       }
@@ -239,19 +240,39 @@
     banner.classList.toggle('is-final', final);
   }
 
-  // Pencil mascot: thinking while waiting, confused when nobody guessed,
-  // and a celebration with the winners' own avatars when the game is won.
+  // Pencil mascot scenes: Greeting in the lobby, Drawing while the artist
+  // chooses, Excited for a few seconds after each correct guess, Surprised in
+  // the last 10 seconds, Confused when nobody guessed, and a celebration with
+  // the winners' own avatars when the game is won.
+  let excitedKey = '';
+  let excitedUntil = 0;
   function showMascot() {
     const mascot = window.DoodleMascot;
     if (!mascot) return;
     const game = state.game;
     const phase = state.phase;
     const turn = game.number + ':' + state.round;
-    if (phase === 'lobby' || phase === 'wordSelection') mascot.place(get('waitingMascot'), 'thinking:' + game.number, 'thinking');
+    if (phase === 'lobby') mascot.place(get('waitingMascot'), 'greeting:' + game.number, 'greeting');
+    else if (phase === 'wordSelection') mascot.place(get('waitingMascot'), 'drawing:' + turn, 'drawing');
     else mascot.clear(get('waitingMascot'));
+    const solved = turn + ':' + state.solvers.length;
+    // The first snapshot after connecting only records the count, so a TV that
+    // joins mid-round does not cheer for an old guess.
+    if (!excitedKey) excitedKey = solved;
+    if (phase === 'drawing' && state.solvers.length && excitedKey !== solved) {
+      excitedKey = solved;
+      excitedUntil = Date.now() + 3000;
+      setTimeout(() => { if (state) showMascot(); }, 3100);
+    }
+    const seconds = state.remainingSeconds;
     const final = phase === 'finished' && game.isComplete;
-    if (phase === 'finished' && !final && state.solvers.length === 0) mascot.place(get('mascotCorner'), 'confused:' + turn, 'confused');
-    else mascot.clear(get('mascotCorner'));
+    const corner = get('mascotCorner');
+    corner.classList.toggle('is-live', phase === 'drawing');
+    if (phase === 'drawing' && Date.now() < excitedUntil) mascot.place(corner, 'excited:' + excitedKey, 'excited');
+    else if (phase === 'drawing' && seconds > 0 && seconds <= 10) mascot.place(corner, 'surprised:' + turn, 'surprised');
+    else if (phase === 'finished' && !final && state.solvers.length === 0) mascot.place(corner, 'confused:' + turn, 'confused');
+    else if (phase === 'finished' && !final) mascot.place(corner, 'excited:' + turn, 'excited');
+    else mascot.clear(corner);
     if (!final) { mascot.clear(get('mascotWin')); return; }
     let winners = [];
     let title = 'Thanks for playing!';
