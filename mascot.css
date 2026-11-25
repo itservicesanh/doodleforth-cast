@@ -46,7 +46,21 @@
 @keyframes mascot-high-five { 50% { transform: translateX(8%) rotate(4deg); } }
 @keyframes mascot-high-five-back { 50% { transform: translateX(-8%); } }
 
+/* Speech bubble for idle quotes. */
+.mascot-quote {
+  position: relative; margin: 0; padding: .55em .9em; border-radius: 1em; max-width: 26em;
+  background: #f3ecff; color: #2d105f; font-weight: 800; line-height: 1.25; text-align: center;
+  box-shadow: 0 .2em .6em rgba(45, 16, 95, .18);
+}
+.mascot-quote[hidden] { display: none; }
+.mascot-quote::before {
+  content: ''; position: absolute; top: -.5em; left: 50%; margin-left: -.5em;
+  border: .5em solid transparent; border-top: 0; border-bottom-color: #f3ecff;
+}
+.mascot-quote-in { animation: mascot-quote-in .35s ease-out both; }
+@keyframes mascot-quote-in { from { opacity: 0; transform: translateY(.4em) scale(.96); } to { opacity: 1; transform: none; } }
+
 @media (prefers-reduced-motion: reduce) {
-  .mascot, .mascot img, .mascot-win-pencil, .mascot-win-crowd { animation: none !important; }
+  .mascot, .mascot img, .mascot-win-pencil, .mascot-win-crowd, .mascot-quote { animation: none !important; }
   .mascot-confetti { display: none; }
 }

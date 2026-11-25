@@ -17,6 +17,7 @@
   let inkFrame = 0;
   let guessTimer;
   let audio;
+  const AudioKit = window.AudioContext || window.webkitAudioContext;
   let soundEnabled = false;
   let turnKey = '';
   let guessKey = '';
@@ -65,11 +66,13 @@
       } else if (message.type === 'tv_configuration') {
         get('join').classList.toggle('is-large', message.largeQR === true);
         get('party').classList.toggle('quiet-celebrations', message.celebrations === false);
+        configureSound(message);
       } else if (message.type === 'round_clock' && state) {
         state.remainingSeconds = message.remainingSeconds;
         state.bonusRemainingSeconds = message.bonusRemainingSeconds;
         showClock();
         showMascot();
+        playTick();
       } else {
         applyInk(message);
       }
@@ -157,11 +160,7 @@
     showStandings();
     showCorrectGuesses();
     showGuesses();
-    if (previous && previous.game.number === game.number
-        && (previous.round === state.round && state.solvers.length > previous.solvers.length
-          || previous.phase !== phase && phase === 'finished')) {
-      chime();
-    }
+    playSounds(previous);
     paint();
   }
 
@@ -252,8 +251,9 @@
     const game = state.game;
     const phase = state.phase;
     const turn = game.number + ':' + state.round;
-    if (phase === 'lobby') mascot.place(get('waitingMascot'), 'greeting:' + game.number, 'greeting');
-    else if (phase === 'wordSelection') mascot.place(get('waitingMascot'), 'drawing:' + turn, 'drawing');
+    // While waiting, the pencil changes pose and says a new line every 8 seconds.
+    if (phase === 'lobby') mascot.idle(get('waitingMascot'), get('waitingQuote'), 'lobby:' + game.number, ['greeting', 'wink', 'relaxed', 'drawing-action']);
+    else if (phase === 'wordSelection') mascot.idle(get('waitingMascot'), get('waitingQuote'), 'choose:' + turn, ['drawing', 'drawing-action']);
     else mascot.clear(get('waitingMascot'));
     const solved = turn + ':' + state.solvers.length;
     // The first snapshot after connecting only records the count, so a TV that
@@ -509,21 +509,92 @@
     paint();
   }
 
-  function chime() {
-    if (!soundEnabled || !audio || audio.state !== 'running') return;
-    for (const [index, frequency] of [523.25, 659.25, 783.99].entries()) {
-      const note = audio.createOscillator();
-      const volume = audio.createGain();
-      const time = audio.currentTime + index * .09;
-      note.type = 'sine';
-      note.frequency.value = frequency;
-      volume.gain.setValueAtTime(.075, time);
-      volume.gain.exponentialRampToValueAtTime(.001, time + .2);
-      note.connect(volume);
-      volume.connect(audio.destination);
-      note.start(time);
-      note.stop(time + .21);
+  // Party sounds, made in code (no audio files). The host turns them on or off
+  // and sets the volume; older hosts leave it to the TV's own Sound button.
+  let master;
+  let volume = 0.7;
+  let tickKey = '';
+  function ensureAudio() {
+    if (!AudioKit) return null;
+    if (!audio) {
+      audio = new AudioKit();
+      master = audio.createGain();
+      master.connect(audio.destination);
+      audio.onstatechange = showSoundButton;
     }
+    master.gain.value = volume;
+    return audio;
+  }
+
+  function tone(frequency, start, length, options) {
+    const settings = options || {};
+    const note = audio.createOscillator();
+    const level = audio.createGain();
+    const time = audio.currentTime + start;
+    note.type = settings.type || 'sine';
+    note.frequency.setValueAtTime(frequency, time);
+    if (settings.to) note.frequency.exponentialRampToValueAtTime(settings.to, time + length);
+    level.gain.setValueAtTime(0.0001, time);
+    level.gain.exponentialRampToValueAtTime(settings.gain || 0.12, time + 0.012);
+    level.gain.exponentialRampToValueAtTime(0.0001, time + length);
+    note.connect(level);
+    level.connect(master);
+    note.start(time);
+    note.stop(time + length + 0.02);
+  }
+
+  function play(name) {
+    if (!soundEnabled || !audio || audio.state !== 'running' || volume <= 0) return;
+    switch (name) {
+      case 'join': tone(660, 0, 0.14, { to: 990, gain: 0.1 }); break;
+      case 'start': tone(392, 0, 0.16, { type: 'triangle' }); tone(587.33, 0.13, 0.26, { type: 'triangle' }); break;
+      case 'correct': [523.25, 659.25, 783.99].forEach((f, i) => tone(f, i * 0.09, 0.22)); break;
+      case 'tick': tone(1250, 0, 0.04, { type: 'square', gain: 0.035 }); break;
+      case 'lastTick': tone(1560, 0, 0.06, { type: 'square', gain: 0.05 }); break;
+      case 'nobody': tone(330, 0, 0.32, { type: 'triangle', to: 262 }); tone(247, 0.3, 0.5, { type: 'triangle', to: 165 }); break;
+      case 'win':
+        [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, i * 0.12, 0.2, { type: 'triangle' }));
+        [523.25, 659.25, 783.99].forEach(f => tone(f, 0.5, 0.9, { gain: 0.08 }));
+        break;
+      default:
+    }
+  }
+
+  function playSounds(previous) {
+    if (!previous || previous.game.number !== state.game.number) return;
+    const phase = state.phase;
+    if (state.players.length > previous.players.length) play('join');
+    if (previous.phase === 'wordSelection' && phase === 'drawing') play('start');
+    const newSolve = previous.round === state.round && state.solvers.length > previous.solvers.length;
+    if (previous.phase !== 'finished' && phase === 'finished') {
+      if (state.game.isComplete) play('win');
+      else if (!state.solvers.length) play('nobody');
+      else if (!newSolve) play('correct');
+    }
+    if (newSolve) play('correct');
+  }
+
+  function playTick() {
+    const seconds = state.remainingSeconds;
+    if (state.phase !== 'drawing' || seconds < 1 || seconds > 10) return;
+    const key = turnKey + ':' + seconds;
+    if (key === tickKey) return;
+    tickKey = key;
+    play(seconds <= 3 ? 'lastTick' : 'tick');
+  }
+
+  function showSoundButton() {
+    const button = get('sound');
+    button.textContent = !soundEnabled ? 'Sound off' : audio && audio.state === 'running' ? 'Sound on' : 'Tap for sound';
+    button.setAttribute('aria-pressed', String(soundEnabled));
+  }
+
+  function configureSound(message) {
+    if (typeof message.sounds !== 'boolean') return;
+    soundEnabled = message.sounds;
+    if (typeof message.volume === 'number') volume = Math.min(1, Math.max(0, message.volume));
+    if (ensureAudio() && soundEnabled) audio.resume().catch(() => {});
+    showSoundButton();
   }
 
   get('pairForm').addEventListener('submit', event => {
@@ -545,14 +616,13 @@
     get('fullscreen').textContent = document.fullscreenElement ? 'Exit full screen' : 'Full screen';
     paint();
   });
-  const Audio = window.AudioContext || window.webkitAudioContext;
-  get('sound').hidden = !Audio;
+  get('sound').hidden = !AudioKit;
   get('sound').addEventListener('click', () => {
-    if (!audio) audio = new Audio();
-    soundEnabled = !soundEnabled;
-    if (soundEnabled) audio.resume().catch(() => {});
-    get('sound').textContent = soundEnabled ? 'Sound on' : 'Sound off';
-    get('sound').setAttribute('aria-pressed', String(soundEnabled));
+    if (!ensureAudio()) return;
+    // A press while sound is on but blocked by the browser only unlocks audio.
+    if (!soundEnabled || audio.state === 'running') soundEnabled = !soundEnabled;
+    if (soundEnabled) audio.resume().then(showSoundButton).catch(() => {});
+    showSoundButton();
   });
   window.addEventListener('resize', fitFrame);
   window.addEventListener('online', () => { if (code && !socket && hasConnected) connect(); });
