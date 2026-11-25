@@ -25,11 +25,36 @@
   let standingsKey = '';
   const cards = new Map();
 
+  // Live ink is drawn a piece at a time: only the new points of the line being
+  // drawn are added on top. Anything else (undo, clear, fill, resize, a new
+  // snapshot) repaints the whole picture. Older TVs and Chromecasts cannot keep
+  // up with a full redraw 30 times a second.
+  let fullPaint = true;
+  let liveStroke = null;
+  let liveFrom = 0;
+
   function paint() {
+    fullPaint = true;
+    liveStroke = null;
+    schedulePaint();
+  }
+
+  function paintLive(stroke, from) {
+    if (!fullPaint && liveStroke && liveStroke !== stroke) fullPaint = true;
+    if (!fullPaint && !liveStroke) { liveStroke = stroke; liveFrom = from; }
+    schedulePaint();
+  }
+
+  function schedulePaint() {
     if (inkFrame) return;
     inkFrame = requestAnimationFrame(() => {
       inkFrame = 0;
-      if (!get('party').hidden) window.paintDoodleCanvas(canvas, context, strokes);
+      const stroke = liveStroke, from = liveFrom, full = fullPaint;
+      liveStroke = null; fullPaint = false;
+      if (get('party').hidden) { fullPaint = true; return; }
+      if (full || !stroke || !window.paintDoodleSegment || !window.paintDoodleSegment(canvas, context, stroke, from)) {
+        window.paintDoodleCanvas(canvas, context, strokes);
+      }
     });
   }
 
@@ -493,8 +518,12 @@
         const added = Array.isArray(message.points)
           ? message.points.filter(p => Array.isArray(p) && p.length === 2).map(p => ({ x: p[0], y: p[1] }))
           : message.point ? [message.point] : [];
-        if (stroke) for (const point of added) { if (stroke.points.length < 2000) stroke.points.push(point); }
-        break;
+        if (!stroke) return;
+        const from = stroke.points.length;
+        for (const point of added) { if (stroke.points.length < 2000) stroke.points.push(point); }
+        // Only the top-most line can be extended in place.
+        if (stroke === strokes[strokes.length - 1]) paintLive(stroke, from); else paint();
+        return;
       }
       case 'stroke_replace': {
         const index = strokes.findIndex(item => item.id === message.stroke.id);

@@ -211,6 +211,11 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 }
 /* While the round is live it stays small so it barely covers the drawing. */
 .tv-mascot-corner.is-live { height: 17vh; opacity: .95; }
+/* On Cast devices, keep the live drawing smooth: no shadow filter or looping
+   motion over the canvas while a round is live (the pop-in still plays). */
+.is-cast .tv-mascot-corner { filter: none; }
+.is-cast .tv-mascot-corner.is-live { opacity: 1; }
+.is-cast .tv-mascot-corner.is-live .mascot img { animation: none; }
 .tv-mascot-win {
   position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 2; color: white;
   background: #3d1a78;

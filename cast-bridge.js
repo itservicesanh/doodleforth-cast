@@ -10,6 +10,8 @@
   'use strict';
 
   const NAMESPACE = 'urn:x-cast:com.doodleforth.tv';
+  // Lets tv.css drop costly effects on Cast devices (older Chromecasts are slow).
+  document.documentElement.classList.add('is-cast');
   const ASSET_PATH = /^\/(avatars\/[a-f0-9]{24}\.png|join-qr\.png|tv-thumbnail\.png)(\?|$)/;
   const assets = new Map();   // path -> data URL
   const pendingAssets = new Set();
@@ -69,7 +71,8 @@
       return;
     }
     if (!current) { repair(); return; }
-    if (current.onmessage) current.onmessage({ data: JSON.stringify(message) });
+    // Pass the original text on: re-encoding every ink message costs time on slow devices.
+    if (current.onmessage) current.onmessage({ data: text });
   }
 
   // tv.js stops retrying when its first connection closes before a snapshot

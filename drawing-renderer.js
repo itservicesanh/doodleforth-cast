@@ -45,3 +45,34 @@ window.paintDoodleCanvas = function (canvas, context, strokes) {
     context.stroke();
   }
 };
+
+// Draws only the newest part of a line on top of what is already painted, so
+// live ink costs a few segments per frame instead of a full redraw. Returns
+// false when a full paintDoodleCanvas is needed instead (canvas resized, or a
+// stroke type that cannot be extended).
+window.paintDoodleSegment = function (canvas, context, stroke, fromIndex) {
+  if (!context || !stroke || !Array.isArray(stroke.points)) return false;
+  if (stroke.tool === 'clear' || stroke.tool === 'fill') return false;
+  const clientWidth = canvas.clientWidth, clientHeight = canvas.clientHeight;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (!clientWidth || !clientHeight) return false;
+  const width = Math.max(1, Math.round(clientWidth * dpr));
+  const height = Math.max(1, Math.round(clientHeight * dpr));
+  if (canvas.width !== width || canvas.height !== height) return false;
+  const points = stroke.points;
+  const start = Math.max(0, fromIndex - 1);
+  if (points.length - start < 2) return true; // Nothing new to join yet.
+  const cw = Math.min(width, height * (16 / 9));
+  const ch = cw * 9 / 16;
+  const ox = (width - cw) / 2, oy = (height - ch) / 2;
+  const px = p => ox + Math.max(0, Math.min(1, Number(p.x) || 0)) * cw;
+  const py = p => oy + Math.max(0, Math.min(1, Number(p.y) || 0)) * ch;
+  context.setTransform(1, 0, 0, 1, 0, 0);
+  context.strokeStyle = stroke.tool === 'eraser' ? '#ffffff' : /^#[0-9a-f]{6}$/i.test(stroke.color) ? stroke.color : '#202024';
+  context.lineWidth = Math.max(.001, Math.min(.035, Number(stroke.width) || .008)) * cw;
+  context.lineCap = 'round'; context.lineJoin = 'round';
+  context.beginPath(); context.moveTo(px(points[start]), py(points[start]));
+  for (let i = start + 1; i < points.length; i++) context.lineTo(px(points[i]), py(points[i]));
+  context.stroke();
+  return true;
+};
